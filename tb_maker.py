@@ -12,10 +12,33 @@ import re
 #file read=============================================================
 #rtl = str(sys.argv[1]);
 #testbench = str(sys.argv[2]);
-rtl = str("alu.v");
+rtl = "alu.v";
 module = open(rtl,'r');
+#======================================================================
+tb_read = open('testbench.v','r');
+current_line_tb = tb_read.readlines();
+user_main_code = [];
+#======================================================================
+#User main testbench code retain after regeneration
+def retained_code_lines():
+    finish_line = 0;
+    start_line = 0;
+    for i in range(len(current_line_tb)):
+        #tokens = re.split('      //your test bench code here',current_line[i]);
+        if((start_line==1)and(re.search('finish;',current_line_tb[i])==None)):
+            user_main_code.append(current_line_tb[i]);
+        if((re.search('//your test bench code here',current_line_tb[i])!=None)):
+            start_line += 1;
+        if(re.search('finish;',current_line_tb[i])!=None):
+            start_line += 1;
+#Store user code domain inside a lists
+retained_code_lines();
+tb_read.close();
+#======================================================================
 tb = open('testbench.v','w');
 current_line = module.readlines();
+#Ports record lists
+#======================================================================
 input_ports = [];
 output_ports = [];
 #======================================================================
@@ -70,11 +93,15 @@ def port_instantiation():
         else:
             tb.write("      ."+output_ports[i]+"("+output_ports[i]+")\n");
 #======================================================================
-#MAIN Testbench maker
+#Main Testbench maker
 #======================================================================
 #Time scale and testbench module
 tb.write("`timescale 1ns/10ps\n");
 tb.write("module testbench;\n");
+#======================================================================
+#Port declaration
+#tb.write("   reg         clk;\n");
+#tb.write("   reg         rstn;\n");
 #======================================================================
 #Port declaration
 for i in range(len(current_line)):
@@ -93,7 +120,6 @@ tb.write('      $fsdbDumpfile("dump.fsdb");\n');
 tb.write("      $fsdbDumpvars(0,testbench);\n");
 tb.write("   end\n");
 tb.write("\n");
-
 tb.write("\n");
 tb.write("   initial begin\n");
 tb.write("      clk = 1;\n");
@@ -101,12 +127,17 @@ tb.write("      forever\n");
 tb.write("         #10 clk = ~clk;\n");
 tb.write("   end\n");
 tb.write("\n");
-
 tb.write("\n");
 tb.write("   initial begin\n");
-tb.write("   //your test bench port here\n");
+tb.write("   //your test bench code here\n");
+#======================================================================
+#Insert the previous user code domain
+for i in range(len(user_main_code)):
+    tb.write(user_main_code[i]);
+#======================================================================
+tb.write("      $finish;\n");
 tb.write("   end\n");
 tb.write("\n");
-
 tb.write("endmodule\n");
+
 
